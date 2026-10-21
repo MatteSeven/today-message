@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今日を生き切った証</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: #050505;
+      color: #fff;
+      font-family: "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+    }
+
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      padding: 2rem;
+      max-width: 600px;
+      width: 90%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .card {
+      width: 100%;
+      min-height: 240px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .step {
+      position: absolute;
+      opacity: 0;
+      filter: blur(12px);
+      transform: scale(0.85);
+      transition: opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter 1.4s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 2;
+      letter-spacing: 0.12em;
+      color: #e0e0e0;
+      pointer-events: none;
+      width: 100%;
+    }
+
+    .step.active {
+      opacity: 1;
+      filter: blur(0px);
+      transform: scale(1);
+    }
+
+    .step.final.active {
+      color: #ff3300;
+      font-size: 1.6rem;
+      animation: floatGlow 2.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatGlow {
+      0% {
+        text-shadow: 0 0 10px rgba(255, 51, 0, 0.5), 0 0 20px rgba(255, 51, 0, 0.3);
+        transform: scale(1);
+      }
+      100% {
+        text-shadow: 0 0 25px rgba(255, 51, 0, 0.9), 0 0 50px rgba(255, 51, 0, 0.6);
+        transform: scale(1.03);
+      }
+    }
+
+    .tap-hint {
+      margin-top: 2.5rem;
+      font-size: 0.85rem;
+      color: #888;
+      letter-spacing: 0.15em;
+      animation: floatHint 2s infinite ease-in-out;
+    }
+
+    @keyframes floatHint {
+      0%, 100% { opacity: 0.2; transform: translateY(0); }
+      50% { opacity: 0.8; transform: translateY(-3px); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="card">
+      <p class="step active" data-step="1">どんなに足掻いても、<br>今日という一日は二度と来ない。</p>
+      <p class="step" data-step="2">だからお前がどう思おうと、<br>今日を生き切ったお前は、<br>それだけで圧倒的に強い。</p>
+      <p class="step final" data-step="3">今日お前が生き切った証を、<br>ここに一言置いていけ。</p>
+    </div>
+    <div class="tap-hint" id="hint">タップして次へ進む</div>
+  </div>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const steps = document.querySelectorAll('.step');
+    const hint = document.getElementById('hint');
+    let currentStep = 0;
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    class Particle {
+      constructor(x, y, isFinal) {
+        this.x = x || Math.random() * canvas.width;
+        this.y = y || canvas.height + 10;
+        this.size = Math.random() * (isFinal ? 4 : 2) + 1;
+        this.speedY = Math.random() * (isFinal ? -4 : -2) - 1;
+        this.speedX = (Math.random() - 0.5) * 2;
+        this.color = isFinal ? `hsl(${Math.random() * 30 + 10}, 100%, 50%)` : '#555';
+        this.alpha = 1;
+        this.decay = Math.random() * 0.02 + 0.005;
+      }
+      update() {
+        this.y += this.speedY;
+        this.x += this.speedX;
+        this.alpha -= this.decay;
+      }
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function createBurst(x, y, isFinal) {
+      const count = isFinal ? 40 : 15;
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle(x, y, isFinal));
+      }
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      if (currentStep === steps.length - 1 && Math.random() < 0.3) {
+        particles.push(new Particle(null, null, true));
+      }
+      
+      for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].alpha <= 0) {
+          particles.splice(i, 1);
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+    animate();
+
+    document.body.addEventListener('click', (e) => {
+      if (currentStep < steps.length - 1) {
+        steps[currentStep].classList.remove('active');
+        currentStep++;
+        steps[currentStep].classList.add('active');
+        
+        createBurst(e.clientX, e.clientY, currentStep === steps.length - 1);
+        
+        if (currentStep === steps.length - 1) {
+          hint.textContent = "─ 覚醒 ─";
+          hint.style.color = "#ff3300";
+        }
+      } else {
+        createBurst(e.clientX, e.clientY, true);
+      }
+    });
+  </script>
+</body>
+</html>
